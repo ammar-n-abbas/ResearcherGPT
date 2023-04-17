@@ -1,0 +1,149 @@
+```
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>PubMed Research Paper Demographics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha384-D8VeU6eAhcSDGwnzJPe/Jv2HdQ35wt1l+Dztz9X1vq3W76oIYm2wejsJmMbMoR6Z" crossorigin=""/>
+    <style>
+      #mapid {
+        height: 500px;
+      }
+
+      .popup {
+        white-space: pre-line;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mapid"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha384-v/iYveTjkjxvbvLtDr8wDmb/U/UpiTiB/Fuv9Hz+CkadDUe4iY4abfB1NxJa3+dM" crossorigin=""></script>
+    <script>
+      var map = L.map('mapid').setView([0, 0], 2);
+
+      L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+        maxZoom: 18,
+        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+          '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+          'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        id: 'mapbox/streets-v11',
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: 'pk.eyJ1IjoiYW1tYXItYWJiYXMiLCJhIjoiY2xnazM5ZzFlMGxoZTNqb2JvamhtcTYxMiJ9.yeqxsCKkN2qrz95MLczHaA'
+      }).addTo(map);
+
+      // PubMed API endpoint
+      var pubmed_endpoint = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
+
+      // User input keywords
+      var keywords = prompt("Enter keywords for search:");
+
+      // Query parameters
+      var params = {
+        "db": "pubmed",
+        "term": keywords,
+        "retmode": "JSON"
+      };
+
+      // Send web request to PubMed API
+      fetch(pubmed_endpoint + "?" + new URLSearchParams(params))
+        .then(response => response.json())
+        .then(data => {
+          // Extract the IDs of the articles
+          var article_ids = data.esearchresult.idlist;
+
+          // For each article, get additional details and demographic information
+          var markers = [];
+          for (var i = 0; i < article_ids.length; i++) {
+            // PubMed API endpoint for retrieving article details
+            var article_endpoint = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi";
+
+            // Query parameters for article details
+            var article_params = {
+              "db": "pubmed",
+              "id": article_ids[i],
+              "retmode": "XML"
+            };
+
+            // Send web request to PubMed API for article details
+            fetch(article_endpoint + "?" + new URLSearchParams(article_params))
+              .then(response => response.text())
+              .then(xml => {
+                // Parse XML response
+                var parser = new DOMParser();
+                var article_xml = parser.parseFromString(xml, "text/xml");
+                var author_elements = article_xml.getElementsByTagName("Author");
+
+                // Extract demographic information from article XML
+                for (var j = 0; j < author_elements.length; j++) {
+                  var author = author_elements[j];
+                  var first_name = author.getElementsByTagName("ForeName")[0].textContent;
+                  var last_name = author.getElementsByTagName("LastName")[0].textContent;
+                  var affiliation = author.getElementsByTagName("Affiliat}
+
+                    // Add marker to map
+                    var marker = L.circleMarker([0, 0], {
+                      radius: 5,
+                      opacity: 1,
+                      color: getColor(country),
+                      fillOpacity: 0.8
+                    }).bindPopup(getPopupContent(first_name, last_name, affiliation, country));
+
+                    // Retrieve geolocation data for article author
+                    fetch("https://nominatim.openstreetmap.org/search.php?" + new URLSearchParams({
+                        q: affiliation,
+                        format: "json"
+                      }))
+                      .then(response => response.json())
+                      .then(data => {
+                        // Set marker location based on geolocation data
+                        if (data.length > 0) {
+                          var latlng = [data[0].lat, data[0].lon];
+                          marker.setLatLng(latlng);
+                          map.panTo(latlng);
+                        }
+                      });
+
+                    markers.push(marker);
+                  }
+                }
+              });
+          }
+
+          // Add markers to map layer
+          var markersLayer = L.layerGroup(markers);
+          markersLayer.addTo(map);
+        });
+
+      // Helper function to set marker color based on country
+      function getColor(country) {
+        switch (country) {
+          case "USA":
+            return "red";
+          case "UK":
+            return "blue";
+          default:
+            return "green";
+        }
+      }
+
+      // Helper function to format popup content
+      function getPopupContent(first_name, last_name, affiliation, country) {
+        return first_name + " " + last_name + "\n" +
+          affiliation + "\n" +
+          country;
+      }
+    </script>
+  </body>
+</html>
+```ion")[0].textContent.trim();
+
+                  if (affiliation !== "") {
+                    // Extract country from affiliation if present
+                    var country = "Other";
+                    if (affiliation.includes("USA")) {
+                      country = "USA";
+                    } else if (affiliation.includes("UK")) {
+                      country = "UK";
